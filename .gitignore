@@ -30,3 +30,8 @@
 *.exe
 *.out
 *.app
+*.manifest
+*.manifest
+*.pdb
+*.idb
+*.dep
