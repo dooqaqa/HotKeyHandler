@@ -9,7 +9,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <vector>
+#include <vector> 
+#include <time.h>
 struct Command {
     Command() : executed(false) {}
     std::vector<DWORD> key_list;
@@ -22,6 +23,28 @@ std::map<std::string, DWORD> name_key_map;
 typedef std::vector<Command>::iterator SearchIter;
 
 HHOOK hk;
+
+bool CreateProcessWay(std::string& path)
+{
+    PROCESS_INFORMATION pi;
+    STARTUPINFOA si = {
+        sizeof(si),
+        NULL, NULL, NULL,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        NULL, NULL, NULL, NULL
+    };
+
+    std::string cmd = "C:\\Windows\\explorer.exe ";
+    cmd += path;
+    BOOL res = CreateProcessA(
+        NULL,
+        const_cast<LPSTR>(cmd.c_str()),
+        NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL,
+        NULL,   // starting directory (NULL means same dir as parent)
+        &si, &pi
+        );
+    return res;
+}
 
 bool CheckAndExecute(SearchIter& it)
 {
@@ -39,9 +62,17 @@ bool CheckAndExecute(SearchIter& it)
         }
     }
     if (execute && !it->executed) {
-        ShellExecuteA( NULL, "open", "explorer.exe", it->path.c_str(), NULL, SW_SHOWNORMAL );
+        DWORD start = clock();
+        std::string cmd = "start ";
+        cmd += it->path;
+//         CreateProcessWay(it->path);
+        system(cmd.c_str());
+//         WinExec(cmd.c_str(), SW_SHOWNORMAL);
+//         ShellExecuteA( NULL, "open", "explorer.exe", it->path.c_str(), NULL, SW_RESTORE );
+        DWORD end = clock();
+//         char tm[100] = {0};
+//         sprintf(tm, "%d", end - start);
         it->executed = true;
-//         OutputDebugStringA("____haha\n");
     }
     return execute;
 }
