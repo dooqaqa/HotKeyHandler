@@ -24,6 +24,58 @@ typedef std::vector<Command>::iterator SearchIter;
 
 HHOOK hk;
 
+bool HandleJapaneseKey(WPARAM wParam, KBDLLHOOKSTRUCT * event) {
+    bool ret = false;
+    switch (event->vkCode) {
+        case VK_LMENU:
+            if (!(event->flags & LLKHF_INJECTED)) {
+                ret = true;
+                if (wParam == WM_SYSKEYDOWN) {
+                    keybd_event(VK_LWIN, MapVirtualKey(VK_LWIN, 0), 0, 0);  
+                } else if (wParam == WM_KEYUP) {
+                    keybd_event(VK_LWIN, MapVirtualKey(VK_LWIN, 0), KEYEVENTF_KEYUP, 0);
+                }
+            }
+            break;
+        case VK_OEM_PA1:
+            if (event->scanCode == 123) {
+                ret = true;
+                if (wParam == WM_KEYDOWN) {
+                    keybd_event(VK_LMENU, MapVirtualKey(VK_LMENU, 0), 0, 0);  
+                } else if (wParam == WM_SYSKEYUP) {
+                    keybd_event(VK_LMENU, MapVirtualKey(VK_LMENU, 0), KEYEVENTF_KEYUP, 0);
+                }
+            }
+            break;
+        case 0xFF:
+            {
+                if (event->scanCode == 121) {
+                    ret = true;
+                    if (wParam == WM_KEYDOWN) {
+                        keybd_event(VK_HOME, MapVirtualKey(VK_HOME, 0), 0, 0);  
+                    } else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
+                        keybd_event(VK_HOME, MapVirtualKey(VK_HOME, 0), KEYEVENTF_KEYUP, 0);
+                    }
+                } else if (event->scanCode == 112) {
+                    ret = true;
+                    if (wParam == WM_KEYDOWN) {
+                        keybd_event(VK_END, MapVirtualKey(VK_END, 0), 0, 0);  
+                    } else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
+                        keybd_event(VK_END, MapVirtualKey(VK_END, 0), KEYEVENTF_KEYUP, 0);
+                    }
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    return ret;
+}
+
+bool HandleExtendedKey(WPARAM wParam, KBDLLHOOKSTRUCT * event) {
+    return HandleJapaneseKey(wParam, event);
+}
+
 bool CreateProcessWay(std::string& path)
 {
     PROCESS_INFORMATION pi;
@@ -52,9 +104,11 @@ bool CheckAndExecute(SearchIter& it)
     bool execute = true;
     for (std::vector<DWORD>::iterator it2 = it->key_list.begin(); it2 != it->key_list.end(); ++it2) {
         SHORT state = ::GetAsyncKeyState(*it2);
+#if 0
         char tst[20] = {0};
         sprintf(tst, "%x, %x\n", *it2, state);
         OutputDebugStringA(tst);
+#endif
         if (!(state & 0x8000)) {
             execute = false;
             it->executed = false;
@@ -86,9 +140,13 @@ LRESULT CALLBACK LowLevelKeyboardProc (INT nCode, WPARAM wParam, LPARAM lParam)
     {  
     case HC_ACTION:
         {
-//             char tst[100] = {0};
-//             sprintf(tst, "_________________________________________ %x\n", pkbhs->vkCode);
-//             OutputDebugStringA(tst);
+#if 1
+            char tst[100] = {0};
+            sprintf(tst, "_________________________________________ %x, %x, %x\n", pkbhs->vkCode, nCode, wParam);
+            OutputDebugStringA(tst);
+#endif
+        if (HandleExtendedKey(wParam, pkbhs))
+            return true;
         bool hit = false;
         for (SearchIter it = key_path_map.begin(); it != key_path_map.end(); ++it) {
             hit = CheckAndExecute(it);
